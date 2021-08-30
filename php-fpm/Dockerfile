@@ -219,12 +219,8 @@ ARG INSTALL_XDEBUG=false
 
 RUN if [ ${INSTALL_XDEBUG} = true ]; then \
   # Install the xdebug extension
-  if [ ${PHP_VERSION} = "8.0" ]; then \
-    apt-get install -y php8.0-xdebug \
-  ;fi\
-  if [ ${PHP_VERSION} = "7.4" ]; then \
-    apt-get install -y php7.4-xdebug \
-  ;fi\
+  pecl install xdebug \
+  && docker-php-ext-enable xdebug \
 ;fi
 
 # Copy xdebug configuration for remote debugging
@@ -284,12 +280,11 @@ RUN if [ ${INSTALL_PHPREDIS} = true ]; then \
 
 ARG INSTALL_SWOOLE=false
 RUN set -eux; \
-    if [ ${INSTALL_SWOOLE} = true ]; then \
-      if [ ${PHP_VERSION} = "8.0" ]; then \
-        apt-get install -y php8.0-swoole \
-      ;fi\
-      php -m | grep -q 'swoole'; \
-    fi
+    if [ ${INSTALL_SWOOLE} = true ]; then \ 
+      printf "no\nyes\nno\nno\n" | pecl install swoole \
+      && docker-php-ext-enable swoole; \
+      php -m | grep -q 'swoole' \
+    ;fi
 
 ###########################################################################
 # Taint EXTENSION
@@ -488,46 +483,6 @@ RUN if [ ${INSTALL_EXIF} = true ]; then \
 ;fi
 
 ###########################################################################
-# PHP Aerospike:
-###########################################################################
-
-USER root
-
-ARG INSTALL_AEROSPIKE=false
-
-RUN set -xe; \
-    if [ ${INSTALL_AEROSPIKE} = true ]; then \
-    # Fix dependencies for PHPUnit within aerospike extension
-    apt-get -y install sudo wget && \
-    # Install the php aerospike extension
-    if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
-      curl -L -o /tmp/aerospike-client-php.tar.gz https://github.com/aerospike/aerospike-client-php5/archive/master.tar.gz; \
-    else \
-      curl -L -o /tmp/aerospike-client-php.tar.gz https://github.com/aerospike/aerospike-client-php/archive/master.tar.gz; \
-    fi \
-    && mkdir -p /tmp/aerospike-client-php \
-    && tar -C /tmp/aerospike-client-php -zxvf /tmp/aerospike-client-php.tar.gz --strip 1 \
-    && \
-    if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
-      ( \
-          cd /tmp/aerospike-client-php/src/aerospike \
-          && phpize \
-          && ./build.sh \
-          && make install \
-      ) \
-    else \
-      ( \
-          cd /tmp/aerospike-client-php/src \
-          && phpize \
-          && ./build.sh \
-          && make install \
-      ) \
-    fi \
-    && rm /tmp/aerospike-client-php.tar.gz \
-    && docker-php-ext-enable aerospike \
-;fi
-
-###########################################################################
 # PHP OCI8:
 ###########################################################################
 
@@ -571,23 +526,6 @@ RUN if [ ${INSTALL_OCI8} = true ]; then \
         && docker-php-ext-enable \
                 oci8 \
   ;fi
-
-###########################################################################
-# IonCube Loader:
-###########################################################################
-
-ARG INSTALL_IONCUBE=false
-
-RUN if [ ${INSTALL_IONCUBE} = true ]; then \
-    if [ $(php -r "echo PHP_MAJOR_VERSION;") != "8" ]; then \
-      # Install the php ioncube loader
-      curl -L -o /tmp/ioncube_loaders_lin_x86-64.tar.gz https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz \
-      && tar zxpf /tmp/ioncube_loaders_lin_x86-64.tar.gz -C /tmp \
-      && mv /tmp/ioncube/ioncube_loader_lin_${LARADOCK_PHP_VERSION}.so $(php -r "echo ini_get('extension_dir');")/ioncube_loader.so \
-      && printf "zend_extension=ioncube_loader.so\n" > $PHP_INI_DIR/conf.d/0ioncube.ini \
-      && rm -rf /tmp/ioncube* \
-    ;fi \
-;fi
 
 ###########################################################################
 # Opcache:
@@ -1048,31 +986,6 @@ RUN if [ ${INSTALL_PHPDECIMAL} = true ]; then \
       && php -m | grep -q 'decimal' \
     ;fi \
 ;fi
-
-###########################################################################
-# zookeeper
-###########################################################################
-ARG INSTALL_ZOOKEEPER=false
-
-RUN set -eux; \
-    if [ ${INSTALL_ZOOKEEPER} = true ]; then \
-    apt install -yqq libzookeeper-mt-dev; \
-    if [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ]; then \
-      curl -L -o /tmp/php-zookeeper.tar.gz https://github.com/php-zookeeper/php-zookeeper/archive/master.tar.gz; \
-      mkdir -p /tmp/php-zookeeper; \
-      tar -C /tmp/php-zookeeper -zxvf /tmp/php-zookeeper.tar.gz --strip 1; \
-      cd /tmp/php-zookeeper; \
-      phpize && ./configure && make && make install;\
-    else \
-      if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
-        pecl install zookeeper-0.5.0; \
-      else \
-        pecl install zookeeper-0.7.2; \
-      fi; \
-    fi; \
-    docker-php-ext-enable zookeeper; \
-    php -m | grep -q 'zookeeper'; \
-    fi
 
 ###########################################################################
 # New Relic for PHP:

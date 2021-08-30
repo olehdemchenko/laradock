@@ -333,31 +333,18 @@ RUN set -eux; \
 
 USER root
 
-ARG INSTALL_XDEBUG=false
+ARG WORKSPACE_INSTALL_XDEBUG=false
 
-RUN if [ ${INSTALL_XDEBUG} = true ]; then \
+RUN pecl config-set php_ini /etc/php/${LARADOCK_PHP_VERSION}/cli/php.ini
+
+RUN if [ ${WORKSPACE_INSTALL_XDEBUG} = true ]; then \
   # Install the xdebug extension
-    pecl install xdebug-3.0.0; \
-  echo "zend_extension=xdebug.so" >> /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-xdebug.ini \
+  pecl install xdebug \
+  && docker-php-ext-enable xdebug \
 ;fi
 
 # ADD for REMOTE debugging
 COPY ./xdebug.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini
-
-RUN if [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ]; then \
-  sed -i "s/xdebug.remote_host=/xdebug.client_host=/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini && \
-  sed -i "s/xdebug.remote_connect_back=0/xdebug.discover_client_host=false/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini && \
-  sed -i "s/xdebug.remote_port=9000/xdebug.client_port=9003/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini && \
-  sed -i "s/xdebug.profiler_enable=0/; xdebug.profiler_enable=0/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini && \
-  sed -i "s/xdebug.profiler_output_dir=/xdebug.output_dir=/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini && \
-  sed -i "s/xdebug.remote_mode=req/; xdebug.remote_mode=req/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini && \
-  sed -i "s/xdebug.remote_autostart=0/xdebug.start_with_request=yes/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini && \
-  sed -i "s/xdebug.remote_enable=0/xdebug.mode=debug/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini \
-;else \
-  sed -i "s/xdebug.remote_autostart=0/xdebug.remote_autostart=1/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini && \
-  sed -i "s/xdebug.remote_enable=0/xdebug.remote_enable=1/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini \
-;fi
-RUN sed -i "s/xdebug.cli_color=0/xdebug.cli_color=1/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini
 
 ###########################################################################
 # pcov:
@@ -526,25 +513,14 @@ RUN if [ ${INSTALL_PHPREDIS} = true ]; then \
 # Swoole EXTENSION
 ###########################################################################
 
-ARG INSTALL_SWOOLE=false
+ARG WORKSPACE_INSTALL_SWOOLE=false
 
 RUN set -eux; \
-    if [ ${INSTALL_SWOOLE} = true ]; then \
-      # Install Php Swoole Extension
-      if   [ $(php -r "echo PHP_VERSION_ID - PHP_RELEASE_VERSION;") = "50600" ]; then \
-        echo '' | pecl -q install swoole-2.0.10; \
-      elif [ $(php -r "echo PHP_VERSION_ID - PHP_RELEASE_VERSION;") = "70000" ]; then \
-        echo '' | pecl -q install swoole-4.3.5; \
-      elif [ $(php -r "echo PHP_VERSION_ID - PHP_RELEASE_VERSION;") = "70100" ]; then \
-        echo '' | pecl -q install swoole-4.5.11; \
-      else \
-        echo '' | pecl -q install swoole; \
-      fi; \
-      echo "extension=swoole.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/swoole.ini; \
-      ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/swoole.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-swoole.ini; \
-      php -m | grep -q 'swoole'; \
-    fi
-
+  if [ ${WORKSPACE_INSTALL_SWOOLE} = true ]; then \ 
+    printf "no\nyes\nno\nno\n" | pecl install swoole \
+    && docker-php-ext-enable swoole \
+    && php -m | grep -q 'swoole' \
+  ;fi
 ###########################################################################
 # Taint EXTENSION
 ###########################################################################
@@ -809,52 +785,6 @@ RUN if [ ${INSTALL_YARN} = true ]; then \
 
 # Add PATH for YARN
 ENV PATH $PATH:/home/laradock/.yarn/bin
-
-###########################################################################
-# PHP Aerospike:
-###########################################################################
-
-USER root
-
-ARG INSTALL_AEROSPIKE=false
-
-RUN set -xe; \
-  if [ ${INSTALL_AEROSPIKE} = true ]; then \
-    # Fix dependencies for PHPUnit within aerospike extension
-    apt-get -y install sudo wget && \
-    # Install the php aerospike extension
-    if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
-      curl -L -o /tmp/aerospike-client-php.tar.gz https://github.com/aerospike/aerospike-client-php5/archive/master.tar.gz; \
-    else \
-      curl -L -o /tmp/aerospike-client-php.tar.gz https://github.com/aerospike/aerospike-client-php/archive/master.tar.gz; \
-    fi \
-    && mkdir -p /tmp/aerospike-client-php \
-    && tar -C /tmp/aerospike-client-php -zxvf /tmp/aerospike-client-php.tar.gz --strip 1 \
-    && \
-      if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
-        ( \
-          cd /tmp/aerospike-client-php/src/aerospike \
-          && phpize \
-          && ./build.sh \
-          && make install \
-        ) \
-      else \
-        if [ $(php -r "echo PHP_MAJOR_VERSION;") = "7" ]; then \
-          ( \
-              cd /tmp/aerospike-client-php/src \
-              && phpize \
-              && ./build.sh \
-              && make install \
-          ) \
-        else \
-          echo "AEROSPIKE does not support PHP 8.0" \
-        ;fi \
-      ;fi \
-    && rm /tmp/aerospike-client-php.tar.gz \
-    && echo 'extension=aerospike.so' >> /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/aerospike.ini \
-    && echo 'aerospike.udf.lua_system_path=/usr/local/aerospike/lua' >> /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/aerospike.ini \
-    && echo 'aerospike.udf.lua_user_path=/usr/local/aerospike/usr-lua' >> /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/aerospike.ini \
-  ;fi
 
 ###########################################################################
 # PHP OCI8:
