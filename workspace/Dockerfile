@@ -227,21 +227,6 @@ RUN if [ ${INSTALL_DRUSH} = true ]; then \
 ;fi
 
 ###########################################################################
-# WP CLI:
-###########################################################################
-
-# The command line interface for WordPress
-
-USER root
-
-ARG INSTALL_WP_CLI=false
-
-RUN if [ ${INSTALL_WP_CLI} = true ]; then \
-    curl -fsSL -o /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar | bash && \
-    chmod +x /usr/local/bin/wp \
-;fi
-
-###########################################################################
 USER root
 
 ARG INSTALL_BZ2=false
@@ -340,11 +325,10 @@ RUN pecl config-set php_ini /etc/php/${LARADOCK_PHP_VERSION}/cli/php.ini
 RUN if [ ${WORKSPACE_INSTALL_XDEBUG} = true ]; then \
   # Install the xdebug extension
   pecl install xdebug \
-  && docker-php-ext-enable xdebug \
 ;fi
 
 # ADD for REMOTE debugging
-COPY ./xdebug.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini
+COPY ./xdebug.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-xdebug.ini
 
 ###########################################################################
 # pcov:
@@ -1531,32 +1515,6 @@ RUN if [ ${INSTALL_PHPDECIMAL} = true ]; then \
       && php -m | grep -q 'decimal' \
     ;fi \
 ;fi
-
-###########################################################################
-# zookeeper
-###########################################################################
-ARG INSTALL_ZOOKEEPER=false
-
-RUN set -eux; \
-    if [ ${INSTALL_ZOOKEEPER} = true ]; then \
-    apt install -yqq libzookeeper-mt-dev; \
-    if [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ]; then \
-      curl -L -o /tmp/php-zookeeper.tar.gz https://github.com/php-zookeeper/php-zookeeper/archive/master.tar.gz; \
-      mkdir -p /tmp/php-zookeeper; \
-      tar -C /tmp/php-zookeeper -zxvf /tmp/php-zookeeper.tar.gz --strip 1; \
-      cd /tmp/php-zookeeper; \
-      phpize && ./configure && make && make install;\
-    else \
-      if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
-        pecl install zookeeper-0.5.0; \
-      else \
-        pecl install zookeeper-0.7.2; \
-      fi; \
-    fi; \
-    echo "extension=zookeeper.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/zookeeper.ini; \
-    ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/zookeeper.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/30-zookeeper.ini; \
-    php -m | grep -q 'zookeeper'; \
-    fi
 
 ###########################################################################
 # PHP SSDB:
