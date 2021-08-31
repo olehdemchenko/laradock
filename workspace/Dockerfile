@@ -1294,11 +1294,11 @@ RUN if [ ${INSTALL_PROTOC} = true ]; then \
 
 USER root
 
-ARG WORKSPACE_INSTALL_XDEBUG=false
+ARG INSTALL_XDEBUG=false
 
 RUN pecl config-set php_ini /etc/php/${LARADOCK_PHP_VERSION}/cli/php.ini
 
-RUN if [ ${WORKSPACE_INSTALL_XDEBUG} = true ]; then \
+RUN if [ ${INSTALL_XDEBUG} = true ]; then \
   # Install the xdebug extension
   pecl install xdebug \
 ;fi
@@ -1310,11 +1310,11 @@ COPY ./xdebug.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-xdebug.ini
 # Swoole EXTENSION
 ###########################################################################
 
-ARG WORKSPACE_INSTALL_SWOOLE=false
+ARG INSTALL_SWOOLE=false
 
 RUN set -eux; \
-  if [ ${WORKSPACE_INSTALL_SWOOLE} = true ]; then \ 
-    printf "no\nyes\nno\nno\n" | pecl install swoole \
+  if [ ${INSTALL_SWOOLE} = true ]; then \ 
+    printf "no\nyes\nno\nno\n" | pecl install swoole; \
     echo "extension=swoole.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/swoole.ini; \
     ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/swoole.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-swoole.ini; \
     php -m | grep -q 'swoole' \
