@@ -276,55 +276,6 @@ RUN if [ ${INSTALL_GEARMAN} = true ]; then \
     sh -c 'echo "extension=/usr/lib/php7/modules/gearman.so" > /usr/local/etc/php/conf.d/gearman.ini' \
 ;fi
 
-# Install Cassandra drivers:
-ARG INSTALL_CASSANDRA=false
-RUN if [ ${INSTALL_CASSANDRA} = true ]; then \
-  if [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ]; then \
-    echo "PHP Driver for Cassandra is not supported for PHP 8.0."; \
-  else \
-    apk add --update --no-cache cassandra-cpp-driver libuv gmp \
-    && apk add --update --no-cache cassandra-cpp-driver-dev gmp-dev --virtual .build-sec \
-    && cd /usr/src \
-    && git clone https://github.com/datastax/php-driver.git \
-    && cd php-driver/ext \
-    && phpize \
-    && mkdir -p /usr/src/php-driver/build \
-    && cd /usr/src/php-driver/build \
-    && ../ext/configure > /dev/null \
-    && make clean > /dev/null \
-    && make > /dev/null 2>&1 \
-    && make install \
-    && docker-php-ext-enable cassandra \
-    && apk del .build-sec; \
-  fi \
-;fi
-
-# Install Phalcon ext
-ARG INSTALL_PHALCON=false
-ARG PHALCON_VERSION
-ENV PHALCON_VERSION ${PHALCON_VERSION}
-
-RUN if [ $INSTALL_PHALCON = true ]; then \
-    apk --update add unzip gcc make re2c bash\
-    && git clone https://github.com/jbboehr/php-psr.git \
-    && cd php-psr \
-    && phpize \
-    && ./configure \
-    && make \
-    && make test \
-    && make install \
-    && curl -L -o /tmp/cphalcon.zip https://github.com/phalcon/cphalcon/archive/v${PHALCON_VERSION}.zip \
-    && unzip -d /tmp/ /tmp/cphalcon.zip \
-    && cd /tmp/cphalcon-${PHALCON_VERSION}/build \
-    && ./install \
-    && rm -rf /tmp/cphalcon* \
-;fi
-
-ARG INSTALL_GHOSTSCRIPT=false
-RUN if [ $INSTALL_GHOSTSCRIPT = true ]; then \
-    apk --update add ghostscript \
-;fi
-
 # Install Redis package:
 ARG INSTALL_REDIS=false
 RUN if [ ${INSTALL_REDIS} = true ]; then \

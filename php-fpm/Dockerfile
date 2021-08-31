@@ -212,21 +212,6 @@ RUN if [ ${INSTALL_PG_CLIENT} = true ]; then \
 ;fi
 
 ###########################################################################
-# xDebug:
-###########################################################################
-
-ARG INSTALL_XDEBUG=false
-
-RUN if [ ${INSTALL_XDEBUG} = true ]; then \
-  # Install the xdebug extension
-  pecl install xdebug \
-  && docker-php-ext-enable xdebug \
-;fi
-
-# Copy xdebug configuration for remote debugging
-COPY ./xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
-
-###########################################################################
 # pcov:
 ###########################################################################
 
@@ -273,18 +258,6 @@ RUN if [ ${INSTALL_PHPREDIS} = true ]; then \
     && rm -rf /tmp/pear \
     && docker-php-ext-enable redis \
 ;fi
-
-###########################################################################
-# Swoole EXTENSION
-###########################################################################
-
-ARG INSTALL_SWOOLE=false
-RUN set -eux; \
-    if [ ${INSTALL_SWOOLE} = true ]; then \ 
-      printf "no\nyes\nno\nno\n" | pecl install swoole \
-      && docker-php-ext-enable swoole; \
-      php -m | grep -q 'swoole' \
-    ;fi
 
 ###########################################################################
 # Taint EXTENSION
@@ -375,41 +348,6 @@ RUN set -eux; \
       docker-php-ext-enable amqp; \
       php -m | grep -oiE '^amqp$'; \
     fi
-
-###########################################################################
-# CASSANDRA:
-###########################################################################
-
-ARG INSTALL_CASSANDRA=false
-
-RUN if [ ${INSTALL_CASSANDRA} = true ]; then \
-    if [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ]; then \
-      echo "PHP Driver for Cassandra is not supported for PHP 8.0."; \
-    else \
-      apt-get install libgmp-dev -yqq && \
-      curl https://downloads.datastax.com/cpp-driver/ubuntu/18.04/dependencies/libuv/v1.35.0/libuv1-dev_1.35.0-1_amd64.deb -o libuv1-dev.deb && \
-      curl https://downloads.datastax.com/cpp-driver/ubuntu/18.04/dependencies/libuv/v1.35.0/libuv1_1.35.0-1_amd64.deb -o libuv1.deb && \
-      curl https://downloads.datastax.com/cpp-driver/ubuntu/18.04/cassandra/v2.16.0/cassandra-cpp-driver-dev_2.16.0-1_amd64.deb -o cassandra-cpp-driver-dev.deb && \
-      curl https://downloads.datastax.com/cpp-driver/ubuntu/18.04/cassandra/v2.16.0/cassandra-cpp-driver_2.16.0-1_amd64.deb -o cassandra-cpp-driver.deb && \
-      dpkg -i libuv1.deb && \
-      dpkg -i libuv1-dev.deb && \
-      dpkg -i cassandra-cpp-driver.deb && \
-      dpkg -i cassandra-cpp-driver-dev.deb && \
-      rm libuv1.deb libuv1-dev.deb cassandra-cpp-driver-dev.deb cassandra-cpp-driver.deb && \
-      cd /usr/src && \
-      git clone https://github.com/datastax/php-driver.git && \
-      cd /usr/src/php-driver/ext && \
-      phpize && \
-      mkdir /usr/src/php-driver/build && \
-      cd /usr/src/php-driver/build && \
-      ../ext/configure > /dev/null && \
-      make clean > /dev/null && \
-      make > /dev/null 2>&1 && \
-      make install && \
-      echo "extension=cassandra.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/cassandra.ini && \
-      ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/cassandra.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/30-cassandra.ini; \
-    fi \
-;fi
 
 ###########################################################################
 # GEARMAN:
@@ -712,34 +650,6 @@ RUN if [ ${INSTALL_CALENDAR} = true ]; then \
 ;fi
 
 ###########################################################################
-# Phalcon:
-###########################################################################
-
-ARG INSTALL_PHALCON=false
-ARG LARADOCK_PHALCON_VERSION
-ENV LARADOCK_PHALCON_VERSION ${LARADOCK_PHALCON_VERSION}
-
-# Copy phalcon configration
-COPY ./phalcon.ini /usr/local/etc/php/conf.d/phalcon.ini.disable
-
-RUN if [ $INSTALL_PHALCON = true ]; then \
-    apt-get install -yqq unzip libpcre3-dev gcc make re2c git automake autoconf\
-    && git clone https://github.com/jbboehr/php-psr.git \
-    && cd php-psr \
-    && phpize \
-    && ./configure \
-    && make \
-    && make test \
-    && make install \
-    && curl -L -o /tmp/cphalcon.zip https://github.com/phalcon/cphalcon/archive/v${LARADOCK_PHALCON_VERSION}.zip \
-    && unzip -d /tmp/ /tmp/cphalcon.zip \
-    && cd /tmp/cphalcon-${LARADOCK_PHALCON_VERSION}/build \
-    && ./install \
-    && mv /usr/local/etc/php/conf.d/phalcon.ini.disable /usr/local/etc/php/conf.d/phalcon.ini \
-    && rm -rf /tmp/cphalcon* \
-;fi
-
-###########################################################################
 # APCU:
 ###########################################################################
 
@@ -1034,6 +944,34 @@ RUN set -xe; \
     && rm /tmp/ssdb-client-php.tar.gz \
     && docker-php-ext-enable ssdb \
 ;fi
+
+###########################################################################
+# xDebug:
+###########################################################################
+
+ARG INSTALL_XDEBUG=false
+
+RUN if [ ${INSTALL_XDEBUG} = true ]; then \
+  # Install the xdebug extension
+  pecl install xdebug \
+  && docker-php-ext-enable xdebug \
+;fi
+
+# Copy xdebug configuration for remote debugging
+COPY ./xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
+
+###########################################################################
+# Swoole EXTENSION
+###########################################################################
+
+ARG INSTALL_SWOOLE=false
+RUN set -eux; \
+  if [ ${INSTALL_SWOOLE} = true ]; then \ 
+    printf "no\nyes\nno\nno\n" | pecl install swoole \
+    && docker-php-ext-enable swoole; \
+    php -m | grep -q 'swoole' \
+  ;fi
+
 ###########################################################################
 # Downgrade Openssl:
 ###########################################################################

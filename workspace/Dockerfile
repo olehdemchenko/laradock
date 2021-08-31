@@ -313,24 +313,6 @@ RUN set -eux; \
     fi
 
 ###########################################################################
-# xDebug:
-###########################################################################
-
-USER root
-
-ARG WORKSPACE_INSTALL_XDEBUG=false
-
-RUN pecl config-set php_ini /etc/php/${LARADOCK_PHP_VERSION}/cli/php.ini
-
-RUN if [ ${WORKSPACE_INSTALL_XDEBUG} = true ]; then \
-  # Install the xdebug extension
-  pecl install xdebug \
-;fi
-
-# ADD for REMOTE debugging
-COPY ./xdebug.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-xdebug.ini
-
-###########################################################################
 # pcov:
 ###########################################################################
 
@@ -346,20 +328,6 @@ RUN if [ ${INSTALL_PCOV} = true ]; then \
       echo "pcov.enabled" >> /etc/php/${LARADOCK_PHP_VERSION}/cli/php.ini \
     ;fi \
   ;fi \
-;fi
-
-
-###########################################################################
-# Phpdbg:
-###########################################################################
-
-USER root
-
-ARG INSTALL_PHPDBG=false
-
-RUN if [ ${INSTALL_PHPDBG} = true ]; then \
-    # Load the xdebug extension only with phpunit commands
-    apt-get install -y --force-yes php${LARADOCK_PHP_VERSION}-phpdbg \
 ;fi
 
 ###########################################################################
@@ -437,41 +405,6 @@ RUN if [ ${INSTALL_AMQP} = true ]; then \
 ;fi
 
 ###########################################################################
-# CASSANDRA:
-###########################################################################
-
-ARG INSTALL_CASSANDRA=false
-
-RUN if [ ${INSTALL_CASSANDRA} = true ]; then \
-    if [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ]; then \
-      echo "PHP Driver for Cassandra is not supported for PHP 8.0."; \
-    else \
-      apt-get install libgmp-dev -yqq && \
-      curl https://downloads.datastax.com/cpp-driver/ubuntu/18.04/dependencies/libuv/v1.35.0/libuv1-dev_1.35.0-1_amd64.deb -o libuv1-dev.deb && \
-      curl https://downloads.datastax.com/cpp-driver/ubuntu/18.04/dependencies/libuv/v1.35.0/libuv1_1.35.0-1_amd64.deb -o libuv1.deb && \
-      curl https://downloads.datastax.com/cpp-driver/ubuntu/18.04/cassandra/v2.16.0/cassandra-cpp-driver-dev_2.16.0-1_amd64.deb -o cassandra-cpp-driver-dev.deb && \
-      curl https://downloads.datastax.com/cpp-driver/ubuntu/18.04/cassandra/v2.16.0/cassandra-cpp-driver_2.16.0-1_amd64.deb -o cassandra-cpp-driver.deb && \
-      dpkg -i libuv1.deb && \
-      dpkg -i libuv1-dev.deb && \
-      dpkg -i cassandra-cpp-driver.deb && \
-      dpkg -i cassandra-cpp-driver-dev.deb && \
-      rm libuv1.deb libuv1-dev.deb cassandra-cpp-driver-dev.deb cassandra-cpp-driver.deb && \
-      cd /usr/src && \
-      git clone https://github.com/datastax/php-driver.git && \
-      cd /usr/src/php-driver/ext && \
-      phpize && \
-      mkdir /usr/src/php-driver/build && \
-      cd /usr/src/php-driver/build && \
-      ../ext/configure > /dev/null && \
-      make clean >/dev/null && \
-      make >/dev/null 2>&1 && \
-      make install && \
-      echo "extension=cassandra.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/cassandra.ini && \
-      ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/cassandra.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/30-cassandra.ini; \
-    fi \
-;fi
-
-###########################################################################
 # Gearman:
 ###########################################################################
 
@@ -493,18 +426,6 @@ RUN if [ ${INSTALL_PHPREDIS} = true ]; then \
     apt-get install -yqq php${LARADOCK_PHP_VERSION}-redis \
 ;fi
 
-###########################################################################
-# Swoole EXTENSION
-###########################################################################
-
-ARG WORKSPACE_INSTALL_SWOOLE=false
-
-RUN set -eux; \
-  if [ ${WORKSPACE_INSTALL_SWOOLE} = true ]; then \ 
-    printf "no\nyes\nno\nno\n" | pecl install swoole \
-    && docker-php-ext-enable swoole \
-    && php -m | grep -q 'swoole' \
-  ;fi
 ###########################################################################
 # Taint EXTENSION
 ###########################################################################
@@ -589,23 +510,6 @@ ARG INSTALL_GRAPHVIZ=false
 
 RUN if [ ${INSTALL_GRAPHVIZ} = true ]; then \
     apt-get install -yqq graphviz \
-;fi
-
-# IonCube Loader
-###########################################################################
-
-ARG INSTALL_IONCUBE=false
-
-RUN if [ ${INSTALL_IONCUBE} = true ]; then \
-    if [ $(php -r "echo PHP_MAJOR_VERSION;") != "8" ]; then \
-      # Install the php ioncube loader
-      curl -L -o /tmp/ioncube_loaders_lin_x86-64.tar.gz https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz \
-      && tar zxpf /tmp/ioncube_loaders_lin_x86-64.tar.gz -C /tmp \
-      && mv /tmp/ioncube/ioncube_loader_lin_${LARADOCK_PHP_VERSION}.so $(php -r "echo ini_get('extension_dir');")/ioncube_loader.so \
-      && echo "zend_extension=ioncube_loader.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/ioncube.ini \
-      && ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/ioncube.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/0ioncube.ini \
-      && rm -rf /tmp/ioncube* \
-    ;fi \
 ;fi
 
 ###########################################################################
@@ -1181,33 +1085,6 @@ RUN if [ ${INSTALL_DUSK_DEPS} = true ]; then \
 ;fi
 
 ###########################################################################
-# Phalcon:
-###########################################################################
-
-ARG INSTALL_PHALCON=false
-ARG LARADOCK_PHALCON_VERSION
-ENV LARADOCK_PHALCON_VERSION ${LARADOCK_PHALCON_VERSION}
-
-RUN if [ $INSTALL_PHALCON = true ]; then \
-    apt-get update && apt-get install -yqq unzip libpcre3-dev gcc make re2c git automake autoconf\
-    && git clone https://github.com/jbboehr/php-psr.git \
-    && cd php-psr \
-    && phpize \
-    && ./configure \
-    && make \
-    && make test \
-    && make install \
-    && curl -L -o /tmp/cphalcon.zip https://github.com/phalcon/cphalcon/archive/v${LARADOCK_PHALCON_VERSION}.zip \
-    && unzip -d /tmp/ /tmp/cphalcon.zip \
-    && cd /tmp/cphalcon-${LARADOCK_PHALCON_VERSION}/build \
-    && ./install \
-    && echo "extension=psr.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/phalcon.ini \
-    && echo "extension=phalcon.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/phalcon.ini \
-    && ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/phalcon.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/30-phalcon.ini \
-    && rm -rf /tmp/cphalcon* \
-;fi
-
-###########################################################################
 USER root
 
 ARG INSTALL_MYSQL_CLIENT=false
@@ -1410,6 +1287,38 @@ RUN if [ ${INSTALL_PROTOC} = true ]; then \
   chmod +x /usr/local/bin/protoc && \
   chmod -R +r /usr/local/include/google \
 ;fi
+
+###########################################################################
+# xDebug:
+###########################################################################
+
+USER root
+
+ARG WORKSPACE_INSTALL_XDEBUG=false
+
+RUN pecl config-set php_ini /etc/php/${LARADOCK_PHP_VERSION}/cli/php.ini
+
+RUN if [ ${WORKSPACE_INSTALL_XDEBUG} = true ]; then \
+  # Install the xdebug extension
+  pecl install xdebug \
+;fi
+
+# ADD for REMOTE debugging
+COPY ./xdebug.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-xdebug.ini
+
+###########################################################################
+# Swoole EXTENSION
+###########################################################################
+
+ARG WORKSPACE_INSTALL_SWOOLE=false
+
+RUN set -eux; \
+  if [ ${WORKSPACE_INSTALL_SWOOLE} = true ]; then \ 
+    printf "no\nyes\nno\nno\n" | pecl install swoole \
+    echo "extension=swoole.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/swoole.ini; \
+    ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/swoole.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-swoole.ini; \
+    php -m | grep -q 'swoole' \
+  ;fi
 
 ###########################################################################
 # Check PHP version:
