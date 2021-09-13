@@ -421,73 +421,22 @@ RUN if [ ${INSTALL_EXIF} = true ]; then \
 ;fi
 
 ###########################################################################
-# PHP OCI8:
-###########################################################################
-
-ARG INSTALL_OCI8=false
-ARG ORACLE_INSTANT_CLIENT_MIRROR=https://github.com/diogomascarenha/oracle-instantclient/raw/master/
-
-ENV LD_LIBRARY_PATH="/opt/oracle/instantclient_12_1"
-ENV OCI_HOME="/opt/oracle/instantclient_12_1"
-ENV OCI_LIB_DIR="/opt/oracle/instantclient_12_1"
-ENV OCI_INCLUDE_DIR="/opt/oracle/instantclient_12_1/sdk/include"
-ENV OCI_VERSION=12
-
-RUN if [ ${INSTALL_OCI8} = true ]; then \
-    # Install wget
-    apt-get install --no-install-recommends -yqq wget \
-    # Install Oracle Instantclient
-    && mkdir /opt/oracle \
-        && cd /opt/oracle \
-        && wget ${ORACLE_INSTANT_CLIENT_MIRROR}instantclient-basic-linux.x64-12.1.0.2.0.zip \
-        && wget ${ORACLE_INSTANT_CLIENT_MIRROR}instantclient-sdk-linux.x64-12.1.0.2.0.zip \
-        && unzip /opt/oracle/instantclient-basic-linux.x64-12.1.0.2.0.zip -d /opt/oracle \
-        && unzip /opt/oracle/instantclient-sdk-linux.x64-12.1.0.2.0.zip -d /opt/oracle \
-        && ln -s /opt/oracle/instantclient_12_1/libclntsh.so.12.1 /opt/oracle/instantclient_12_1/libclntsh.so \
-        && ln -s /opt/oracle/instantclient_12_1/libclntshcore.so.12.1 /opt/oracle/instantclient_12_1/libclntshcore.so \
-        && ln -s /opt/oracle/instantclient_12_1/libocci.so.12.1 /opt/oracle/instantclient_12_1/libocci.so \
-        && rm -rf /opt/oracle/*.zip \
-    # Install PHP extensions deps
-    && apt-get install --no-install-recommends -yqq \
-      libaio-dev \
-      freetds-dev && \
-    # Install PHP extensions
-    if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
-      echo 'instantclient,/opt/oracle/instantclient_12_1/' | pecl install oci8-2.0.10; \
-    else \
-      echo 'instantclient,/opt/oracle/instantclient_12_1/' | pecl install oci8-2.2.0; \
-    fi \
-        && docker-php-ext-configure pdo_oci --with-pdo-oci=instantclient,/opt/oracle/instantclient_12_1,12.1 \
-        && docker-php-ext-configure pdo_dblib --with-libdir=/lib/x86_64-linux-gnu \
-        && docker-php-ext-install \
-                pdo_oci \
-        && docker-php-ext-enable \
-                oci8 \
-  ;fi
-
-###########################################################################
-# Opcache:
+# Opcache & Mysqli:
 ###########################################################################
 
 ARG INSTALL_OPCACHE=false
+ARG INSTALL_MYSQLI=false
 
 RUN if [ ${INSTALL_OPCACHE} = true ]; then \
     docker-php-ext-install opcache \
-;fi
-
-# Copy opcache configration
-COPY ./opcache.ini /usr/local/etc/php/conf.d/opcache.ini
-
-###########################################################################
-# Mysqli Modifications:
-###########################################################################
-
-ARG INSTALL_MYSQLI=false
-
-RUN if [ ${INSTALL_MYSQLI} = true ]; then \
+;fi \
+if [ ${INSTALL_MYSQLI} = true ]; then \
     docker-php-ext-install mysqli \
 ;fi
 
+
+# Copy opcache configration
+COPY ./opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
 ###########################################################################
 # Human Language and Character Encoding Support:
@@ -527,48 +476,6 @@ RUN if [ ${INSTALL_LDAP} = true ]; then \
     docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu/ && \
     docker-php-ext-install ldap \
 ;fi
-
-###########################################################################
-# SQL SERVER:
-###########################################################################
-
-ARG INSTALL_MSSQL=false
-
-RUN set -eux; \
-  if [ ${INSTALL_MSSQL} = true ]; then \
-    if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
-      apt-get -yqq install freetds-dev libsybdb5 \
-      && ln -s /usr/lib/x86_64-linux-gnu/libsybdb.so /usr/lib/libsybdb.so \
-      && docker-php-ext-install mssql pdo_dblib \
-      && php -m | grep -q 'mssql' \
-      && php -m | grep -q 'pdo_dblib' \
-    ;else \
-      ###########################################################################
-      # Ref from https://github.com/Microsoft/msphpsql/wiki/Dockerfile-for-adding-pdo_sqlsrv-and-sqlsrv-to-official-php-image
-      ###########################################################################
-      # Add Microsoft repo for Microsoft ODBC Driver 13 for Linux
-      apt-get install -yqq apt-transport-https gnupg \
-      && curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
-      && curl https://packages.microsoft.com/config/debian/9/prod.list > /etc/apt/sources.list.d/mssql-release.list \
-      && apt-get update -yqq \
-      && ACCEPT_EULA=Y apt-get install -yqq unixodbc unixodbc-dev libgss3 odbcinst msodbcsql17 locales \
-      && echo "en_US.UTF-8 UTF-8" > /etc/locale.gen \
-      && ln -sfn /etc/locale.alias /usr/share/locale/locale.alias \
-      && locale-gen \
-      && if [ $(php -r "echo PHP_MAJOR_VERSION;") = "7" ] && [ $(php -r "echo PHP_MINOR_VERSION;") = "2" ]; then \
-        pecl install pdo_sqlsrv-5.8.1 sqlsrv-5.8.1 \
-      ;elif [ $(php -r "echo PHP_MAJOR_VERSION;") = "7" ] && [ $(php -r "echo PHP_MINOR_VERSION;") = "1" ]; then \
-        pecl install pdo_sqlsrv-5.6.1 sqlsrv-5.6.1 \
-      ;elif [ $(php -r "echo PHP_MAJOR_VERSION;") = "7" ] && [ $(php -r "echo PHP_MINOR_VERSION;") = "0" ]; then \
-        pecl install pdo_sqlsrv-5.3.0 sqlsrv-5.3.0 \
-      ;else \
-        pecl install pdo_sqlsrv sqlsrv \
-      ;fi \
-      && docker-php-ext-enable pdo_sqlsrv sqlsrv \
-      && php -m | grep -q 'pdo_sqlsrv' \
-      && php -m | grep -q 'sqlsrv' \
-    ;fi \
-  ;fi
 
 ###########################################################################
 # Image optimizers:
@@ -682,18 +589,6 @@ RUN if [ ${INSTALL_YAML} = true ]; then \
         echo '' | pecl install yaml; \
     fi \
     && docker-php-ext-enable yaml \
-;fi
-
-###########################################################################
-# RDKAFKA:
-###########################################################################
-
-ARG INSTALL_RDKAFKA=false
-
-RUN if [ ${INSTALL_RDKAFKA} = true ]; then \
-    apt-get install -yqq librdkafka-dev && \
-    pecl install rdkafka && \
-    docker-php-ext-enable rdkafka \
 ;fi
 
 ###########################################################################

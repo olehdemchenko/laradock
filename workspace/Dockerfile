@@ -206,27 +206,6 @@ COPY ./crontab /etc/cron.d
 RUN chmod -R 644 /etc/cron.d
 
 ###########################################################################
-# Drush:
-###########################################################################
-
-# Deprecated install of Drush 8 and earlier versions.
-# Drush 9 and up require Drush to be listed as a composer dependency of your site.
-
-USER root
-
-ARG INSTALL_DRUSH=false
-ARG DRUSH_VERSION
-ENV DRUSH_VERSION ${DRUSH_VERSION}
-
-RUN if [ ${INSTALL_DRUSH} = true ]; then \
-    apt-get -qq -y install mysql-client && \
-    # Install Drush with the phar file.
-    curl -fsSL -o /usr/local/bin/drush https://github.com/drush-ops/drush/releases/download/${DRUSH_VERSION}/drush.phar | bash && \
-    chmod +x /usr/local/bin/drush && \
-    drush core-status \
-;fi
-
-###########################################################################
 USER root
 
 ARG INSTALL_BZ2=false
@@ -284,7 +263,6 @@ RUN set -eux; \
 ARG INSTALL_LDAP=false
 ARG INSTALL_SMB=false
 ARG INSTALL_IMAP=false
-ARG INSTALL_SUBVERSION=false
 
 RUN set -eux; \
     ###########################################################################
@@ -304,12 +282,6 @@ RUN set -eux; \
     ###########################################################################
     if [ ${INSTALL_IMAP} = true ]; then \
         apt-get install -yqq php${LARADOCK_PHP_VERSION}-imap; \
-    fi; \
-    ###########################################################################
-    # Subversion:
-    ###########################################################################
-    if [ ${INSTALL_SUBVERSION} = true ]; then \
-        apt-get install -yqq subversion; \
     fi
 
 ###########################################################################
@@ -453,24 +425,6 @@ RUN if [ ${INSTALL_LIBPNG} = true ]; then \
 ;fi
 
 ###########################################################################
-# Inotify EXTENSION:
-###########################################################################
-
-ARG INSTALL_INOTIFY=false
-
-RUN if [ ${INSTALL_INOTIFY} = true ]; then \
-    if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
-      pecl -q install inotify-0.1.6 && \
-      echo "extension=inotify.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/inotify.ini && \
-      ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/inotify.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-inotify.ini; \
-    else \
-      pecl -q install inotify && \
-      echo "extension=inotify.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/inotify.ini && \
-      ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/inotify.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-inotify.ini \
-    ;fi \
-;fi
-
-###########################################################################
 # AST EXTENSION
 ###########################################################################
 
@@ -510,21 +464,6 @@ ARG INSTALL_GRAPHVIZ=false
 
 RUN if [ ${INSTALL_GRAPHVIZ} = true ]; then \
     apt-get install -yqq graphviz \
-;fi
-
-###########################################################################
-# Drupal Console:
-###########################################################################
-
-USER root
-
-ARG INSTALL_DRUPAL_CONSOLE=false
-
-RUN if [ ${INSTALL_DRUPAL_CONSOLE} = true ]; then \
-    apt-get -y install mysql-client && \
-    curl https://drupalconsole.com/installer -L -o drupal.phar && \
-    mv drupal.phar /usr/local/bin/drupal && \
-    chmod +x /usr/local/bin/drupal \
 ;fi
 
 USER laradock
@@ -675,70 +614,6 @@ RUN if [ ${INSTALL_YARN} = true ]; then \
 ENV PATH $PATH:/home/laradock/.yarn/bin
 
 ###########################################################################
-# PHP OCI8:
-###########################################################################
-
-USER root
-ARG INSTALL_OCI8=false
-ARG ORACLE_INSTANT_CLIENT_MIRROR=https://github.com/diogomascarenha/oracle-instantclient/raw/master/
-
-ENV LD_LIBRARY_PATH="/opt/oracle/instantclient_12_1"
-ENV OCI_HOME="/opt/oracle/instantclient_12_1"
-ENV OCI_LIB_DIR="/opt/oracle/instantclient_12_1"
-ENV OCI_INCLUDE_DIR="/opt/oracle/instantclient_12_1/sdk/include"
-ENV OCI_VERSION=12
-
-RUN if [ ${INSTALL_OCI8} = true ]; then \
-  # Install wget
-  apt-get update && apt-get install --no-install-recommends -y wget \
-  # Install Oracle Instantclient
-  && mkdir /opt/oracle \
-      && cd /opt/oracle \
-      && wget ${ORACLE_INSTANT_CLIENT_MIRROR}instantclient-basic-linux.x64-12.1.0.2.0.zip \
-      && wget ${ORACLE_INSTANT_CLIENT_MIRROR}instantclient-sdk-linux.x64-12.1.0.2.0.zip \
-      && unzip /opt/oracle/instantclient-basic-linux.x64-12.1.0.2.0.zip -d /opt/oracle \
-      && unzip /opt/oracle/instantclient-sdk-linux.x64-12.1.0.2.0.zip -d /opt/oracle \
-      && ln -s /opt/oracle/instantclient_12_1/libclntsh.so.12.1 /opt/oracle/instantclient_12_1/libclntsh.so \
-      && ln -s /opt/oracle/instantclient_12_1/libclntshcore.so.12.1 /opt/oracle/instantclient_12_1/libclntshcore.so \
-      && ln -s /opt/oracle/instantclient_12_1/libocci.so.12.1 /opt/oracle/instantclient_12_1/libocci.so \
-      && rm -rf /opt/oracle/*.zip \
-  # Install PHP extensions deps
-  && apt-get update \
-      && apt-get install --no-install-recommends -y \
-          libaio-dev && \
-  # Install PHP extensions
-  if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
-    echo 'instantclient,/opt/oracle/instantclient_12_1/' | pecl install oci8-2.0.10; \
-  else \
-    echo 'instantclient,/opt/oracle/instantclient_12_1/' | pecl install oci8-2.2.0; \
-  fi \
-  && echo "extension=oci8.so" >> /etc/php/${LARADOCK_PHP_VERSION}/cli/php.ini \
-  && php -m | grep -q 'oci8' \
-;fi
-
-###########################################################################
-# PHP V8JS:
-###########################################################################
-
-USER root
-
-ARG INSTALL_V8JS=false
-
-RUN set -xe; \
-  if [ ${INSTALL_V8JS} = true ]; then \
-    add-apt-repository -y ppa:pinepain/libv8-archived \
-    && apt-get update -yqq \
-    && apt-get install -y libv8-5.4 && \
-    if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
-      pecl install v8js-0.6.4; \
-    else \
-      pecl install v8js; \
-    fi \
-    && echo "extension=v8js.so" >> /etc/php/${LARADOCK_PHP_VERSION}/cli/php.ini \
-    && php -m | grep -q 'v8js' \
-  ;fi
-
-###########################################################################
 # Laravel Envoy:
 ###########################################################################
 
@@ -791,87 +666,6 @@ RUN if [ ${INSTALL_DEPLOYER} = true ]; then \
 ;fi
 
 ###########################################################################
-# Prestissimo:
-###########################################################################
-ARG INSTALL_PRESTISSIMO=false
-
-RUN if [ ${INSTALL_PRESTISSIMO} = true ]; then \
-    if [ $(php -r "echo COMPOSER_VERSION;") = "1" ]; then \
-      # Install Prestissimo
-      composer global require "hirak/prestissimo" \
-    ;fi \
-;fi
-
-###########################################################################
-# Linuxbrew:
-###########################################################################
-
-USER root
-
-ARG INSTALL_LINUXBREW=false
-
-RUN if [ ${INSTALL_LINUXBREW} = true ]; then \
-    # Preparation
-    apt-get upgrade -y && \
-    apt-get install -y build-essential make cmake scons curl git \
-      ruby autoconf automake autoconf-archive \
-      gettext libtool flex bison \
-      libbz2-dev libcurl4-openssl-dev \
-      libexpat-dev libncurses-dev && \
-    # Install the Linuxbrew
-    git clone --depth=1 https://github.com/Homebrew/linuxbrew.git ~/.linuxbrew && \
-    echo "" >> ~/.bashrc && \
-    echo 'export PKG_CONFIG_PATH"=/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig:$PKG_CONFIG_PATH"' >> ~/.bashrc && \
-    # Setup linuxbrew
-    echo 'export LINUXBREWHOME="$HOME/.linuxbrew"' >> ~/.bashrc && \
-    echo 'export PATH="$LINUXBREWHOME/bin:$PATH"' >> ~/.bashrc && \
-    echo 'export MANPATH="$LINUXBREWHOME/man:$MANPATH"' >> ~/.bashrc && \
-    echo 'export PKG_CONFIG_PATH="$LINUXBREWHOME/lib64/pkgconfig:$LINUXBREWHOME/lib/pkgconfig:$PKG_CONFIG_PATH"' >> ~/.bashrc && \
-    echo 'export LD_LIBRARY_PATH="$LINUXBREWHOME/lib64:$LINUXBREWHOME/lib:$LD_LIBRARY_PATH"' >> ~/.bashrc \
-;fi
-
-###########################################################################
-# SQL SERVER:
-###########################################################################
-
-ARG INSTALL_MSSQL=false
-
-RUN set -eux; \
-  if [ ${INSTALL_MSSQL} = true ]; then \
-    if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
-      apt-get install -yqq php5.6-sybase freetds-bin freetds-common libsybdb5 \
-      && php -m | grep -oiE '^mssql$' \
-      && php -m | grep -oiE '^pdo_dblib$' \
-    ;else \
-      ###########################################################################
-      #  The following steps were taken from
-      #  https://github.com/Microsoft/msphpsql/wiki/Install-and-configuration
-      ###########################################################################
-      curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
-      curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
-      apt-get update -yqq && \
-      ACCEPT_EULA=Y apt-get install -yqq msodbcsql17 mssql-tools unixodbc unixodbc-dev libgss3 odbcinst locales && \
-      ln -sfn /opt/mssql-tools/bin/sqlcmd /usr/bin/sqlcmd && \
-      ln -sfn /opt/mssql-tools/bin/bcp /usr/bin/bcp && \
-      echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
-      locale-gen \
-      && if [ $(php -r "echo PHP_VERSION_ID - PHP_RELEASE_VERSION;") = "70000" ]; then \
-        pecl install pdo_sqlsrv-5.3.0 sqlsrv-5.3.0 \
-      ;elif [ $(php -r "echo PHP_VERSION_ID - PHP_RELEASE_VERSION;") = "70100" ]; then \
-        pecl install pdo_sqlsrv-5.6.1 sqlsrv-5.6.1 \
-      ;elif [ $(php -r "echo PHP_VERSION_ID - PHP_RELEASE_VERSION;") = "70200" ]; then \
-        pecl install pdo_sqlsrv-5.8.1 sqlsrv-5.8.1 \
-      ;else \
-        pecl install pdo_sqlsrv sqlsrv \
-      ;fi && \
-      echo "extension=pdo_sqlsrv.so" > /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-pdo_sqlsrv.ini && \
-      echo "extension=sqlsrv.so"     > /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-sqlsrv.ini && \
-      php -m | grep -oiE '^pdo_sqlsrv$' && \
-      php -m | grep -oiE '^sqlsrv$' \
-    ;fi \
-  ;fi
-
-###########################################################################
 # Minio:
 ###########################################################################
 
@@ -920,21 +714,6 @@ RUN if [ ${INSTALL_SYMFONY} = true ]; then \
 ;fi
 
 ###########################################################################
-# PYTHON2:
-###########################################################################
-
-ARG INSTALL_PYTHON=false
-
-RUN if [ ${INSTALL_PYTHON} = true ]; then \
-  apt-get -y install python python-dev build-essential  \
-  && curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py  \
-  && python get-pip.py  \
-  && rm get-pip.py  \
-  && python -m pip install --upgrade pip  \
-  && python -m pip install --upgrade virtualenv \
-;fi
-
-###########################################################################
 # PYTHON3:
 ###########################################################################
 
@@ -950,28 +729,13 @@ RUN if [ ${INSTALL_PYTHON3} = true ]; then \
 ;fi
 
 ###########################################################################
-# POWERLINE:
-###########################################################################
-
-USER root
-ARG INSTALL_POWERLINE=false
-
-RUN if [ ${INSTALL_POWERLINE} = true ]; then \
-    if [ ${INSTALL_PYTHON} = true ]; then \
-    python -m pip install --upgrade powerline-status && \
-    echo "" >> /etc/bash.bashrc && \
-    echo ". /usr/local/lib/python2.7/dist-packages/powerline/bindings/bash/powerline.sh" >> /etc/bash.bashrc \
-  ;fi \
-;fi
-
-###########################################################################
 # SUPERVISOR:
 ###########################################################################
 ARG INSTALL_SUPERVISOR=false
 
 RUN if [ ${INSTALL_SUPERVISOR} = true ]; then \
     if [ ${INSTALL_PYTHON} = true ]; then \
-    python -m pip install --upgrade supervisor && \
+    python3 -m pip install --upgrade supervisor && \
     echo_supervisord_conf > /etc/supervisord.conf && \
     sed -i 's/\;\[include\]/\[include\]/g' /etc/supervisord.conf && \
     sed -i 's/\;files\s.*/files = supervisord.d\/*.conf/g' /etc/supervisord.conf \
@@ -1012,22 +776,6 @@ RUN if [ ${INSTALL_IMAGEMAGICK} = true ]; then \
     echo "extension=imagick.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/imagick.ini && \
     ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/imagick.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-imagick.ini && \
     php -m | grep -q 'imagick' \
-;fi
-
-###########################################################################
-# Terraform:
-###########################################################################
-
-USER root
-
-ARG INSTALL_TERRAFORM=false
-
-RUN if [ ${INSTALL_TERRAFORM} = true ]; then \
-    apt-get -yqq install sudo wget unzip \
-    && wget https://releases.hashicorp.com/terraform/0.10.6/terraform_0.10.6_linux_amd64.zip \
-    && unzip terraform_0.10.6_linux_amd64.zip \
-    && mv terraform /usr/local/bin \
-    && rm terraform_0.10.6_linux_amd64.zip \
 ;fi
 
 ###########################################################################
@@ -1125,7 +873,6 @@ RUN set -eux; \
 USER root
 
 ARG INSTALL_YAML=false
-ARG INSTALL_RDKAFKA=false
 ARG INSTALL_FFMPEG=false
 
 RUN set -eux; \
@@ -1143,16 +890,6 @@ RUN set -eux; \
     fi; \
     echo "extension=yaml.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/yaml.ini; \
     ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/yaml.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/35-yaml.ini; \
-  fi; \
-  ###########################################################################
-  # RDKAFKA:
-  ###########################################################################
-  if [ ${INSTALL_RDKAFKA} = true ]; then \
-    apt-get install -yqq librdkafka-dev; \
-    pecl install rdkafka; \
-    echo "extension=rdkafka.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/rdkafka.ini; \
-    ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/rdkafka.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-rdkafka.ini; \
-    php -m | grep -q 'rdkafka'; \
   fi; \
   ###########################################################################
   # FFMpeg:
@@ -1220,32 +957,6 @@ RUN if [ ${INSTALL_MAILPARSE} = true ]; then \
 ;fi
 
 ###########################################################################
-# GNU Parallel:
-###########################################################################
-
-USER root
-
-ARG INSTALL_GNU_PARALLEL=false
-
-RUN if [ ${INSTALL_GNU_PARALLEL} = true ]; then \
-  apt-get -yqq install parallel \
-;fi
-
-###########################################################################
-# Bash Git Prompt
-###########################################################################
-
-ARG INSTALL_GIT_PROMPT=false
-
-COPY git-prompt.sh /tmp/git-prompt
-
-RUN if [ ${INSTALL_GIT_PROMPT} = true ]; then \
-    git clone https://github.com/magicmonty/bash-git-prompt.git /root/.bash-git-prompt --depth=1 && \
-    cat /tmp/git-prompt >> /root/.bashrc && \
-    rm /tmp/git-prompt \
-;fi
-
-###########################################################################
 # XMLRPC:
 ###########################################################################
 
@@ -1253,16 +964,6 @@ ARG INSTALL_XMLRPC=false
 
 RUN if [ ${INSTALL_XMLRPC} = true ]; then \
     apt-get install -yqq php${LARADOCK_PHP_VERSION}-xmlrpc \
-;fi
-
-###########################################################################
-# Lnav:
-###########################################################################
-
-ARG INSTALL_LNAV=false
-
-RUN if [ ${INSTALL_LNAV} = true ]; then \
-    apt-get install -yqq lnav \
 ;fi
 
 ###########################################################################
