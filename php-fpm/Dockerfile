@@ -410,30 +410,12 @@ RUN if [ ${INSTALL_MEMCACHED} = true ]; then \
 ;fi
 
 ###########################################################################
-# Exif:
+# Opcache & Mysqli & EXIF:
 ###########################################################################
 
-ARG INSTALL_EXIF=false
-
-RUN if [ ${INSTALL_EXIF} = true ]; then \
-    # Enable Exif PHP extentions requirements
-    docker-php-ext-install exif \
-;fi
-
-###########################################################################
-# Opcache & Mysqli:
-###########################################################################
-
-ARG INSTALL_OPCACHE=false
-ARG INSTALL_MYSQLI=false
-
-RUN if [ ${INSTALL_OPCACHE} = true ]; then \
-    docker-php-ext-install opcache \
-;fi \
-if [ ${INSTALL_MYSQLI} = true ]; then \
-    docker-php-ext-install mysqli \
-;fi
-
+RUN docker-php-ext-install opcache && \
+    docker-php-ext-install mysqli && \
+    docker-php-ext-install exif
 
 # Copy opcache configration
 COPY ./opcache.ini /usr/local/etc/php/conf.d/opcache.ini
