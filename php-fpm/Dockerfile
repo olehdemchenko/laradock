@@ -845,7 +845,7 @@ ARG INSTALL_SWOOLE=false
 RUN set -eux; \
   if [ ${INSTALL_SWOOLE} = true ]; then \ 
     printf "no\nyes\nno\nno\n" | pecl install swoole \
-    && docker-php-ext-enable swoole; \
+    && docker-php-ext-enable openswoole; \
     php -m | grep -q 'swoole' \
   ;fi
 
