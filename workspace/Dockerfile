@@ -1026,9 +1026,7 @@ bindkey "^?" backward-delete-char\n' >> /home/laradock/.zshrc && \
   echo "" >> /home/laradock/.zshrc && \
   echo "# Load Custom Aliases" >> /home/laradock/.zshrc && \
   echo "source /home/laradock/aliases.sh" >> /home/laradock/.zshrc && \
-  echo "" >> /home/laradock/.zshrc \
-
-USER root
+  echo "" >> /home/laradock/.zshrc
 
 ###########################################################################
 # ZSH User Aliases
