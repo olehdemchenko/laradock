@@ -1003,7 +1003,7 @@ RUN apt install -y zsh
 # TODO: Repair
 USER laradock
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh) --keep-zshrc" && \
-  sed -i -r 's/ZSH_THEME="robbyrussell"/ZSH_THEME="robbyrussell"/' /home/laradock/.zshrc && \
+  sed -i -r 's/ZSH_THEME="robbyrussell"/ZSH_THEME="agnoster"/' /home/laradock/.zshrc && \
   sed -i -r 's/^plugins=\(.*?\)$/plugins=(laravel5)/' /home/laradock/.zshrc && \
   echo '\n\
 bindkey "^[OB" down-line-or-search\n\

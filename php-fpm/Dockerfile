@@ -397,17 +397,8 @@ RUN if [ ${INSTALL_BCMATH} = true ]; then \
 # PHP Memcached:
 ###########################################################################
 
-ARG INSTALL_MEMCACHED=false
-
-RUN if [ ${INSTALL_MEMCACHED} = true ]; then \
-    # Install the php memcached extension
-    if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
-      echo '' | pecl -q install memcached-2.2.0; \
-    else \
-      echo '' | pecl -q install memcached; \
-    fi \
-    && docker-php-ext-enable memcached \
-;fi
+RUN echo '' | pecl -q install memcached  && \
+    docker-php-ext-enable memcached;
 
 ###########################################################################
 # Opcache & Mysqli & EXIF:
