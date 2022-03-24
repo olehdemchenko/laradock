@@ -974,20 +974,6 @@ RUN if [ ${INSTALL_XDEBUG} = true ]; then \
 COPY ./xdebug.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-xdebug.ini
 
 ###########################################################################
-# Swoole EXTENSION
-###########################################################################
-
-ARG INSTALL_SWOOLE=false
-
-RUN set -eux; \
-  if [ ${INSTALL_SWOOLE} = true ]; then \ 
-    printf "no\nyes\nno\nno\n" | pecl install openswoole; \
-    echo "extension=openswoole.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/openswoole.ini; \
-    ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/openswoole.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-openswoole.ini; \
-    php -m | grep -q 'swoole' \
-  ;fi
-
-###########################################################################
 # Check PHP version:
 ###########################################################################
 

@@ -829,18 +829,6 @@ RUN if [ ${INSTALL_XDEBUG} = true ]; then \
 COPY ./xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
 
 ###########################################################################
-# Swoole EXTENSION
-###########################################################################
-
-ARG INSTALL_SWOOLE=false
-RUN set -eux; \
-  if [ ${INSTALL_SWOOLE} = true ]; then \ 
-    printf "no\nyes\nno\nno\n" | pecl install openswoole \
-    && docker-php-ext-enable openswoole; \
-    php -m | grep -q 'swoole' \
-  ;fi
-
-###########################################################################
 # Downgrade Openssl:
 ###########################################################################
 

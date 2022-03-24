@@ -249,27 +249,6 @@ RUN if [ ${INSTALL_REDIS} = true ]; then \
 ;fi
 
 ###########################################################################
-# Swoole EXTENSION
-###########################################################################
-
-ARG INSTALL_SWOOLE=false
-
-RUN if [ ${INSTALL_SWOOLE} = true ]; then \
-    # Install Php Swoole Extension
-    if   [ $(php -r "echo PHP_VERSION_ID - PHP_RELEASE_VERSION;") = "50600" ]; then \
-      echo '' | pecl -q install swoole-2.0.10; \
-    elif [ $(php -r "echo PHP_VERSION_ID - PHP_RELEASE_VERSION;") = "70000" ]; then \
-      echo '' | pecl -q install swoole-4.3.5; \
-    elif [ $(php -r "echo PHP_VERSION_ID - PHP_RELEASE_VERSION;") = "70100" ]; then \
-      echo '' | pecl -q install swoole-4.5.11; \
-    else \
-      echo '' | pecl -q install swoole; \
-    fi; \
-    docker-php-ext-enable swoole \
-    && php -m | grep -q 'swoole' \
-;fi
-
-###########################################################################
 # Taint EXTENSION
 ###########################################################################
 
